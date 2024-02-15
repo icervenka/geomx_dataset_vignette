@@ -1,0 +1,38 @@
+---
+title: "GeoMX Dataset Tutorial"
+author: "Igor Cervenka"
+date: "2024-02-01"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r style, echo = FALSE, results = "asis"}
+BiocStyle::markdown()
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading libraries
+
+Load required GeoMx and nanostring packages.
+
+```{r libraries_geomx, message=FALSE, warning=FALSE}
+library(NanoStringNCTools)
+library(GeomxTools)
+library(GeoMxWorkflows)
+```
+
+Load other useful packages.
+
+```{r libraries_other, message=FALSE, warning=FALSE}
+library(knitr)
+library(scales)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+```
+
