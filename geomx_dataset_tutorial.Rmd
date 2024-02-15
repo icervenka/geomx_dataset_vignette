@@ -116,4 +116,160 @@ Slots will carry different information related to the dataset, such as probe met
 - `annotation`
 - `protocolData`
 
+## GeoMx dataset access
+
+Several access functions are available for GeoMx dataset. Short intruction to R
+indexing can be found [here](https://cran.r-project.org/doc/manuals/R-lang.html#Indexing)
+
+Using [ selector directly on the NanoStringGeoMx object will select or subset the probes in case of rows and SampleIDs in case of columns on ALL relevant slots
+
+```{r}
+demoData[1:5, 1:10]
+```
+
+Returns name of files for individual sequenced areas (which also correspond to sample IDs)
+```{r}
+colnames(demoData)[1:5]
+```
+
+Returns the IDs of probes
+```{r}
+rownames(demoData)[1:5]
+```
+
+### Assay data
+
+Contains matrices connected to measured reads for each sample and probe. It is stored in the GeoMx dataset as [environment](https://adv-r.hadley.nz/environments.html)
+
+```{r}
+assayData(demoData)
+```
+
+The easiest way to extract the contents of environment is to coerce it to list.
+```{r}
+names(as.list(assayData(demoData)))
+```
+Initially this environment will have a matrix of raw reads in a variable called `exprs`. Later, after data processing or normalization, additonal matrices with specific names will be added.
+To access the `exprs` variable in assay data, one can use `exprs` function directly on GeoMx object.
+```{r}
+exprs(demoData)[1:3, 1:3] # accesses the data slot in the environment
+
+# or equivalently
+as.list(assayData(demoData))$exprs[1:3, 1:3]
+```
+GeoMx calls the variables/matrices in the `assayData` enviroment elements and you can additionally access them by `assayDataElement` function, where the second function argument is the element to return.
+```{r}
+assayDataElement(demoData, "exprs")[1:3, 1:3]
+```
+
+### Phenotypic data
+
+Contains phenotypical info and metadata such as user designations of experimental groups, tissues or segments that samples belong to. Stored as [Annotated Data Frame](https://www.rdocumentation.org/packages/Biobase/versions/2.32.0/topics/AnnotatedDataFrame). 
+
+```{r}
+phenoData(demoData)
+```
+Contains both the actual data and metadata. Data is present in `@data` slot and metadata descriptions in `@varMetadata` slot.
+
+```{r}
+head(phenoData(demoData)@data)
+```
+
+Package also offers a shorthand function `pData` to directly extract the phenotypical data from GeoMx dataset and return is as regular data frame.
+
+```{r}
+head(pData(demoData))
+```
+You can use `[[` selector with metadata label to return only one column of phenotypical data.
+```{r}
+head(phenoData(demoData)[["slide name"]])
+```
+**NOTES:**
+
+ - some of the variables are stored in `pData` as a list or nested data frame, so the name of the metadata labels might be different than the name of the columns returned
+ - because of this, more columns can be returned as well
+
+The same way the package offers shorthand function `varMetadata` to extract directly the dataframe with metadata and their descriptions
+```{r}
+head(varMetadata(demoData)) # is equivalent to head(phenoData(demoData)@varMetadata)
+
+```
+
+Or you can use `varLabels` function if you only want the metadata as a character vector:
+```{r}
+varLabels(demoData)
+```
+
+
+### Feature data
+
+Annotated data frame with all feature variable values and variable meta-data. In this case features refer to the probes.
+```{r}
+head(featureData(demoData))
+```
+
+If you just want regular data frame with features and associated data you can use `fData` shorthand function.
+```{r}
+head(fData(demoData))
+```
+
+Or alternatively use `pData` function on the annotated data frame, which will also return the  `@data` slot
+```{r}
+head(pData(featureData(demoData))) # equivalent to the previous
+```
+
+
+Similar to phenotypic data, package offers `fvarMetadata` function to access feature metadata with descriptions. 
+```{r}
+fvarMetadata(demoData) # equivalent to varMetadata(featureData(demoData))
+```
+
+And analogously to only return available metadata as character vector one can use `fvarLabels`
+```{r}
+fvarLabels(demoData) # equivalent to varLabels(featureData(demoData))
+```
+
+### Protocol data
+
+Annotated data frame with all protocol data and metadata. This will contain information related to experiment run such as software version, plate IDs or numbers of sequenced reads.
+```{r}
+head(protocolData(demoData))
+```
+
+Protocol data doesn't have its dedicated shorthand function to return only the `@data` slot, but `pData` function will work.
+```{r}
+head(pData(protocolData(demoData)))
+```
+
+Analogously to get metadata information one can use `varMetadata` and `varLabels` functions not on GeoMx object but on protocol data object.
+```{r}
+head(varMetadata(protocolData(demoData)))
+```
+
+```{r}
+head(varLabels(protocolData(demoData)))
+```
+
+### Other
+
+Function `sData` extracts the data frame containing the sample data corresponding to combination of phenoData and protocolData.
+```{r}
+head(sData(demoData))
+```
+
+and is equivalent to
+```{r, include = FALSE}
+head(cbind(pData(demoData), pData(protocolData(demoData))))
+```
+
+**NOTES:**
+
+- will include unpacked QC flag data frame (or other nested dataframe) if it is present
+
+
+# Session Information
+
+```{r session_info, echo=FALSE}
+sessionInfo()
+```
 
