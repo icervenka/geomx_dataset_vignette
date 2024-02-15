@@ -36,3 +36,84 @@ library(ggplot2)
 library(dplyr)
 ```
 
+# Loading data
+
+Set path to example data directory that comes with the package.
+
+```{r set_datadir}
+datadir <- system.file("extdata", "WTA_NGS_Example", package = "GeoMxWorkflows")
+```
+
+Locate dcc, pck and annotation files.
+
+```{r data_location}
+DCCFiles <- dir(file.path(datadir, "dccs"),
+  pattern = ".dcc$",
+  full.names = TRUE, recursive = TRUE
+)
+
+PKCFiles <- unzip(zipfile = dir(file.path(datadir, "pkcs"),
+  pattern = ".zip$",
+  full.names = TRUE, recursive = TRUE
+))
+
+SampleAnnotationFile <- dir(file.path(datadir, "annotation"),
+  pattern = ".xlsx$",
+  full.names = TRUE, recursive = TRUE
+)
+```
+
+These variables only store file paths, not actual data.
+
+```{r data_location_example}
+SampleAnnotationFile
+```
+
+## Create Nanostring dataset
+
+```{r create_geomx_dataset}
+demoData <- readNanoStringGeoMxSet(
+  dccFiles = DCCFiles,
+  pkcFiles = PKCFiles,
+  phenoDataFile = SampleAnnotationFile,
+  phenoDataSheet = "Template",
+  phenoDataDccColName = "Sample_ID",
+  protocolDataColNames = c("aoi", "roi"),
+  experimentDataColNames = c("panel")
+)
+```
+
+## Important Notes
+- `protocolDataColNames` has to correspond to the sample ID colname in the annotation Excel file
+- `protocolDataColNames` have to be present in the annotation Excel file as well
+- Annotation Excel file has to have colname call exactly 'slide name' (all lowercase with space) where information whether slide is a NTC has to be present. Otherwise the `readNanoStringGeoMxSet` will not recognize them.
+- slide name column cannot be used as a variable in the plotting commands due to how the functions have been written. If a column that corressponds to these experimental variables is desired it has to be added manually with column name adhering to standard naming conventions (e.g. no spaces)
+
+# Viewing and interrogating GeoMx data set
+GeoMx dataset is based on older `ExpressionSet` objects originally developed to store microarray data, and have many similar functions as those described on [Bioconductor](https://www.bioconductor.org/packages/release/bioc/vignettes/Biobase/inst/doc/ExpressionSetIntroduction.pdf)
+
+## GeoMx dataset structure
+
+![GeoMx dataset overview](images/geomx_dataset_overview.png)
+
+Data within GeoMx dataset are internally stored in slots, accessed by operator `@`. You can find which slots are available by `slotNames` command
+```{r geomx_slots}
+slotNames(demoData)
+
+demoData@protocolData
+```
+Slots will carry different information related to the dataset, such as probe metadata, sample metadata, QC information and actual measurments
+
+- `dimLabels`
+- `signatures`
+- `design`
+- `featureType`
+- `analyte`
+- `experimentData`
+- `assayData`
+- `phenoData`
+- `featureData`
+- `annotation`
+- `protocolData`
+
+
