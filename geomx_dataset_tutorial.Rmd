@@ -39,13 +39,11 @@ library(dplyr)
 # Loading data
 
 Set path to example data directory that comes with the package.
-
 ```{r set_datadir}
 datadir <- system.file("extdata", "WTA_NGS_Example", package = "GeoMxWorkflows")
 ```
 
 Locate dcc, pck and annotation files.
-
 ```{r data_location}
 DCCFiles <- dir(file.path(datadir, "dccs"),
   pattern = ".dcc$",
@@ -102,19 +100,19 @@ slotNames(demoData)
 
 demoData@protocolData
 ```
+
 Slots will carry different information related to the dataset, such as probe metadata, sample metadata, QC information and actual measurments
 
-- `dimLabels`
-- `signatures`
-- `design`
-- `featureType`
-- `analyte`
-- `experimentData`
-- `assayData`
-- `phenoData`
-- `featureData`
-- `annotation`
-- `protocolData`
+- `dimLabels` - labels for rows and columns of dataset, corresponds to feature IDs for rows and sample IDs for columns
+- `design` - formula for design
+- `featureType` - feature type indicator whether this is probe level or target level (target aggregation was done)
+- `analyte` - type of analyte assayed (RNA in `demoData`) 
+- `experimentData` - stores structured information about the experiment
+- `assayData` - stores the expression values
+- `phenoData` - stores annotation data about the samples. You can add these as columns in the annotation file
+- `featureData` - stores information about the targets or probes for the panel used
+- `annotation` - stores the name of the PKC data
+- `protocolData` - stores information about the assay run
 
 ## GeoMx dataset access
 
@@ -140,7 +138,6 @@ rownames(demoData)[1:5]
 ### Assay data
 
 Contains matrices connected to measured reads for each sample and probe. It is stored in the GeoMx dataset as [environment](https://adv-r.hadley.nz/environments.html)
-
 ```{r}
 assayData(demoData)
 ```
@@ -149,6 +146,7 @@ The easiest way to extract the contents of environment is to coerce it to list.
 ```{r}
 names(as.list(assayData(demoData)))
 ```
+
 Initially this environment will have a matrix of raw reads in a variable called `exprs`. Later, after data processing or normalization, additonal matrices with specific names will be added.
 To access the `exprs` variable in assay data, one can use `exprs` function directly on GeoMx object.
 ```{r}
@@ -157,6 +155,7 @@ exprs(demoData)[1:3, 1:3] # accesses the data slot in the environment
 # or equivalently
 as.list(assayData(demoData))$exprs[1:3, 1:3]
 ```
+
 GeoMx calls the variables/matrices in the `assayData` enviroment elements and you can additionally access them by `assayDataElement` function, where the second function argument is the element to return.
 ```{r}
 assayDataElement(demoData, "exprs")[1:3, 1:3]
@@ -169,17 +168,17 @@ Contains phenotypical info and metadata such as user designations of experimenta
 ```{r}
 phenoData(demoData)
 ```
-Contains both the actual data and metadata. Data is present in `@data` slot and metadata descriptions in `@varMetadata` slot.
 
+Contains both the actual data and metadata. Data is present in `@data` slot and metadata descriptions in `@varMetadata` slot.
 ```{r}
 head(phenoData(demoData)@data)
 ```
 
 Package also offers a shorthand function `pData` to directly extract the phenotypical data from GeoMx dataset and return is as regular data frame.
-
 ```{r}
 head(pData(demoData))
 ```
+
 You can use `[[` selector with metadata label to return only one column of phenotypical data.
 ```{r}
 head(phenoData(demoData)[["slide name"]])
@@ -192,7 +191,6 @@ head(phenoData(demoData)[["slide name"]])
 The same way the package offers shorthand function `varMetadata` to extract directly the dataframe with metadata and their descriptions
 ```{r}
 head(varMetadata(demoData)) # is equivalent to head(phenoData(demoData)@varMetadata)
-
 ```
 
 Or you can use `varLabels` function if you only want the metadata as a character vector:
@@ -258,7 +256,7 @@ head(sData(demoData))
 ```
 
 and is equivalent to
-```{r, include = FALSE}
+```{r, eval = F}
 head(cbind(pData(demoData), pData(protocolData(demoData))))
 ```
 
@@ -266,10 +264,76 @@ head(cbind(pData(demoData), pData(protocolData(demoData))))
 
 - will include unpacked QC flag data frame (or other nested dataframe) if it is present
 
+# Additional functions
+
+## Subsetting
+
+To create subset of GeoMx data set, you can use `subset` function. The subset argument will be evaluated with respect to the featureData, while the select argument will be evaluated with respect to the phenoData and protocolData.
+```{r}
+head(subset(demoData, subset = , select = ))
+```
+
+Use `negativeControlSubset` to view features that were used as a negative control for the experiment (No template controls). Returns a subset GeoMx data set for which all the previously described accessors work.
+```{r}
+negativeControlSubset(demoData)
+```
+
+Use `positiveControlSubset` to view features that were used as a positive control for the experiment. Returns a subset GeoMx data set for which all the previously described accessors work. Return empty set for tutorial `demoData`.
+```{r}
+positiveControlSubset(demoData)
+```
+
+**NOTES:**
+
+- functions `housekeepingSubset` and `controlSubset` also exist, but are not valid for `demoData` tutorial.
+
+## Iteration
+
+### esBy
+
+`esBy` (expression set by) function iterates through the features or samples of the GeoMx dataset depending on specified `MARGIN` parameter while splitting the data according to metadata variable specified in `GROUP`. Analogous to `esBy` for microarray datasets.
+
+Function signature
+`esBy(X, GROUP, FUN, ..., simplify = TRUE)`
+
+```{r}
+head(
+  esBy(negativeControlSubset(demoData),
+    GROUP = "Module",
+    FUN = function(x) {
+      assayDataApply(x, MARGIN = 1, FUN = ngeoMean, elt = "exprs")
+    }
+  )
+)
+```
+
+*NOTES:*
+
+- `GROUP` can be a column in `featureData`, `phenoData`, or `protocolData`
+- for more information check eSet manual pages from Biobase
+
+### esApply
+
+Not part of GeoMx package suite, but works for ExpressionSet and related structures.
+```{r}
+# is expression greater than 15 reads, iterate over rows
+esApply(demoData, MARGIN = 2, FUN = function(x) { x > 15 })[1:3, 1:3]
+```
+
+### assayDataApply
+
+Apply functions to elements in `assayData` slot of GeoMX data set. Initially `exprs` slot is avaialable. After data processing or normalization, additonal matrices with specific names will be added.
+```{r}
+assayDataApply(demoData, MARGIN = 1, FUN = mean, elt = "exprs")[1:10]
+```
+
+# Links
+
+ - for additional and more detailed examples see [Developer Introduction to the NanoStringGeoMxSet](https://bioconductor.org/packages/release/bioc/vignettes/GeomxTools/inst/doc/Developer_Introduction_to_the_NanoStringGeoMxSet.html)
+
 
 # Session Information
 
 ```{r session_info, echo=FALSE}
 sessionInfo()
 ```
-
